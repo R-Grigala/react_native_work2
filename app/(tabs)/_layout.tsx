@@ -49,7 +49,7 @@ const _layout = () => {
           headerRight: () => (
             <View style={styles.bellIcon}>
               <AntDesign name="bell" size={20} color="black" />
-              <Text>{cart?.cartCount}</Text>
+              <Text>{cart?.cartCount ?? 0}</Text>
             </View>
           ),
         }}

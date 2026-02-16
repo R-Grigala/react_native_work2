@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction } from "react";
+import React from "react";
 import {
     StyleSheet,
     TextInput,
@@ -11,7 +11,7 @@ type AppInputPropsType = {
   placeholder: string;
   value?: string | undefined;
   inputStyles?: ViewStyle | undefined;
-  onChangeText: Dispatch<SetStateAction<string>>;
+  onChangeText: (text: string) => void;
 } & TextInputProps &
   ViewStyle;
 

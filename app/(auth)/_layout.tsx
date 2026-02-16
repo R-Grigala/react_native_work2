@@ -4,21 +4,18 @@ import { StyleSheet } from "react-native";
 
 const _layout = () => {
   return (
-    <Stack screenOptions={{ headerShown: false, animation: "flip" }}>
+    <Stack screenOptions={{ headerShown: true, animation: "flip" }}>
       <Stack.Screen
         name="index"
         options={{
-          headerShown: true,
-          headerTitle: "ავტორიზაცია",
-          title: "Login",
+          headerTitle: "Login",
         }}
       />
       <Stack.Screen
         name="register"
         options={{
-          headerShown: true,
-          title: "რეგისტრაცია",
-          headerBackTitle: "ავტ",
+          headerTitle: "Register",
+          headerBackTitle: "Login",
         }}
       />
     </Stack>

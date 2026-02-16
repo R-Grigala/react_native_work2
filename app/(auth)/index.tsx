@@ -14,16 +14,22 @@ const Index = () => {
   const handleSubmit = async () => {
     if (username.length === 0 || password.length === 0) return;
 
-    const response = await fetch("https://fakestoreapi.com/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    try {
+      const response = await fetch("https://fakestoreapi.com/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-    const result = await response.json();
-    if (result?.token) {
-      router.replace("/(tabs)");
-      await AsyncStorage.setItem("user", JSON.stringify(result.token));
+      const result = await response.json();
+      if (result?.token) {
+        await AsyncStorage.setItem("user", JSON.stringify({ token: result.token }));
+        router.replace("/(tabs)");
+      } else {
+        console.error("Login failed: No token received");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
     }
   };
   return (
@@ -31,12 +37,12 @@ const Index = () => {
       <AppTitle title="Log In" />
       <AppInput
         placeholder="username"
-        value="johnd"
+        value={username}
         onChangeText={setUsername}
       />
       <AppInput
         placeholder="password"
-        value="m38rmF$"
+        value={password}
         onChangeText={setPassword}
         secureTextEntry={true}
       />
