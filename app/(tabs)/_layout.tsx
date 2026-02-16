@@ -26,16 +26,6 @@ const _layout = () => {
         }}
       />
       <Tabs.Screen
-        name="polygon"
-        options={{
-          headerTitle: "პოლიგონი",
-          tabBarLabel: "polygon",
-          tabBarIcon: ({ color, focused }) => (
-            <AntDesign name="shop" size={focused ? 24 : 22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="cart"
         options={{
           headerTitle: "საყიდლები",
