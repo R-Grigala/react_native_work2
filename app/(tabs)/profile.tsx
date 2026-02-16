@@ -1,14 +1,14 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 
-const Index = () => {
+const profile = () => {
   return (
     <View>
-      <Text>პროდუქტების გვერდი</Text>
+      <Text>profile</Text>
     </View>
   )
 }
 
-export default Index
+export default profile
 
 const styles = StyleSheet.create({})
