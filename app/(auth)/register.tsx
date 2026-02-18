@@ -59,7 +59,10 @@ const Register = () => {
 
       // Auto-login after registration (mock token)
       const mockToken = `mock_token_${Date.now()}`;
-      await AsyncStorage.setItem("user", JSON.stringify({ token: mockToken }));
+      await AsyncStorage.setItem(
+        "user",
+        JSON.stringify({ token: mockToken, username: data.username })
+      );
 
       Alert.alert("Success", "Registration successful!", [
         {

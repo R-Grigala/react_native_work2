@@ -27,6 +27,7 @@ const AppInput = ({
       <TextInput
         {...props}
         placeholder={placeholder}
+        placeholderTextColor="#6b7280"
         value={value}
         onChangeText={onChangeText}
       />

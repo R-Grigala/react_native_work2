@@ -49,7 +49,7 @@ const Index = () => {
       if (result?.token) {
         await AsyncStorage.setItem(
           "user",
-          JSON.stringify({ token: result.token })
+          JSON.stringify({ token: result.token, username: data.username })
         );
         router.replace("/(tabs)");
       } else {
