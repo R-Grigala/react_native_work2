@@ -19,6 +19,7 @@ type Cart = {
   products: {
     productId: number;
     quantity: number;
+    price?: number;
   }[];
 };
 
@@ -31,6 +32,7 @@ const emptyCart: Cart = {
 
 const cart = () => {
   const [cart, setCart] = useState<Cart | null>(null);
+  const [productPrices, setProductPrices] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const cartContext = useContext(CartCountContext);
@@ -72,7 +74,9 @@ const cart = () => {
     if (!cart) return;
 
     const updatedProducts = cart.products.map((item) =>
-      item.productId === productId ? { ...item, quantity: newQuantity } : item
+      item.productId === productId
+        ? { ...item, quantity: newQuantity }
+        : item
     );
 
     const updatedCart: Cart = {
@@ -116,6 +120,28 @@ const cart = () => {
     }
   }, [cart, cartContext]);
 
+  useEffect(() => {
+    if (!cart?.products?.length) return;
+    const ids = [...new Set(cart.products.map((p) => p.productId))];
+    let cancelled = false;
+    const prices: Record<number, number> = {};
+    Promise.all(
+      ids.map((id) =>
+        fetch(`https://fakestoreapi.com/products/${id}`)
+          .then((res) => res.json())
+          .then((data: { price: number }) => {
+            if (!cancelled) prices[id] = data.price;
+          })
+          .catch(() => {})
+      )
+    ).then(() => {
+      if (!cancelled) setProductPrices((prev) => ({ ...prev, ...prices }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cart?.products]);
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -138,6 +164,14 @@ const cart = () => {
     );
   }
 
+  const totalAmount = cart.products.reduce(
+    (sum, item) =>
+      sum +
+      item.quantity *
+        (productPrices[item.productId] ?? item.price ?? 0),
+    0
+  );
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -154,9 +188,13 @@ const cart = () => {
           onQuantityChange={(newQuantity: number) =>
             updateCartQuantity(item.productId, newQuantity)
           }
-          onRemove={() => removeFromCart(item.productId)}
+          onRequestRemove={() => removeFromCart(item.productId)}
         />
       ))}
+      <View style={styles.totalContainer}>
+        <Text style={styles.totalLabel}>Total</Text>
+        <Text style={styles.totalAmount}>${totalAmount.toFixed(2)}</Text>
+      </View>
     </ScrollView>
   );
 };
@@ -173,6 +211,24 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
+  },
+  totalContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 24,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#e5e7eb",
+  },
+  totalLabel: {
+    fontSize: 16,
+    color: "#6b7280",
+    marginBottom: 4,
+  },
+  totalAmount: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#111827",
   },
   emptyText: {
     fontSize: 18,

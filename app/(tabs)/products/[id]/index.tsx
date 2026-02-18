@@ -1,5 +1,5 @@
-import AppButton from "@/components/appButton/AppButton";
 import { CartCountContext } from "@/app/_layout";
+import AppButton from "@/components/appButton/AppButton";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
@@ -26,7 +26,7 @@ type Cart = {
   id: number;
   userId: number;
   date: string;
-  products: { productId: number; quantity: number }[];
+  products: { productId: number; quantity: number; price?: number }[];
 };
 
 const defaultCart: Cart = {
@@ -69,7 +69,11 @@ export default function ProductDetailScreen() {
       if (existing) {
         existing.quantity += 1;
       } else {
-        cart.products.push({ productId: product.id, quantity: 1 });
+        cart.products.push({
+          productId: product.id,
+          quantity: 1,
+          price: product.price,
+        });
       }
       await AsyncStorage.setItem("cart", JSON.stringify(cart));
       const total = cart.products.reduce((sum, p) => sum + p.quantity, 0);
