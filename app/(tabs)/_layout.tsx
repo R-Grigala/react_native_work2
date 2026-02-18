@@ -57,6 +57,13 @@ const _layout = () => {
           ),
         }}
       />
+      <Tabs.Screen
+        name="products/[id]/index"
+        options={{
+          href: null,
+          headerTitle: "პროდუქტი",
+        }}
+      />
     </Tabs>
   );
 };

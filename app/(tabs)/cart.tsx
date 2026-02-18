@@ -1,7 +1,15 @@
 import CartItem from "@/components/cartItem/CartItem";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useContext, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useContext, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { CartCountContext } from "../_layout";
 
 type Cart = {
@@ -14,43 +22,51 @@ type Cart = {
   }[];
 };
 
+const emptyCart: Cart = {
+  id: 1,
+  userId: 1,
+  date: new Date().toISOString().split("T")[0],
+  products: [],
+};
+
 const cart = () => {
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const cartContext = useContext(CartCountContext);
-  console.log(cartContext);
 
-  const fetchCart = async () => {
-    try {
-      const response = await fetch("https://fakestoreapi.com/carts/1");
-      const result = await response.json();
-      setCart(result);
-      await AsyncStorage.setItem("cart", JSON.stringify(result));
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const checkCart = async () => {
+  const loadCart = async () => {
     try {
       const result = await AsyncStorage.getItem("cart");
       if (!result) {
-        return fetchCart();
+        setCart(emptyCart);
+        return;
       }
-      const localCart = JSON.parse(result);
-      if (localCart?.products && localCart.products.length > 0) {
-        setCart(localCart);
-      }
+      const localCart: Cart = JSON.parse(result);
+      setCart(
+        localCart?.products && Array.isArray(localCart.products)
+          ? localCart
+          : { ...emptyCart, ...localCart, products: localCart?.products ?? [] }
+      );
     } catch (error) {
       console.error("Error loading cart:", error);
-      // Fallback to fetching from API
-      fetchCart();
+      setCart(emptyCart);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCart();
+    }, [])
+  );
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await loadCart();
+    setIsRefreshing(false);
+  }, []);
 
   const updateCartQuantity = async (productId: number, newQuantity: number) => {
     if (!cart) return;
@@ -66,7 +82,6 @@ const cart = () => {
 
     setCart(updatedCart);
 
-    // Persist to AsyncStorage
     try {
       await AsyncStorage.setItem("cart", JSON.stringify(updatedCart));
     } catch (error) {
@@ -74,9 +89,23 @@ const cart = () => {
     }
   };
 
-  useEffect(() => {
-    checkCart();
-  }, []);
+  const removeFromCart = async (productId: number) => {
+    if (!cart) return;
+
+    const updatedProducts = cart.products.filter((item) => item.productId !== productId);
+    const updatedCart: Cart = {
+      ...cart,
+      products: updatedProducts,
+    };
+
+    setCart(updatedCart);
+
+    try {
+      await AsyncStorage.setItem("cart", JSON.stringify(updatedCart));
+    } catch (error) {
+      console.error("Error removing from cart:", error);
+    }
+  };
 
   useEffect(() => {
     if (cart && cartContext) {
@@ -95,16 +124,28 @@ const cart = () => {
     );
   }
 
-  if (!cart || cart.products.length === 0) {
+  if (!cart || !cart.products || cart.products.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.emptyText}>Your cart is empty</Text>
-      </View>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.centerContainer}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+      >
+        <Text style={styles.emptyText}>კალათა ცარიელია</Text>
+      </ScrollView>
     );
   }
 
   return (
-    <View>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.listContent}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+      }
+    >
       {cart.products.map((item) => (
         <CartItem
           key={item.productId}
@@ -113,20 +154,25 @@ const cart = () => {
           onQuantityChange={(newQuantity: number) =>
             updateCartQuantity(item.productId, newQuantity)
           }
+          onRemove={() => removeFromCart(item.productId)}
         />
       ))}
-    </View>
+    </ScrollView>
   );
 };
 
 export default cart;
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   centerContainer: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingTop: 100,
+  },
+  listContent: {
+    paddingBottom: 24,
   },
   emptyText: {
     fontSize: 18,
