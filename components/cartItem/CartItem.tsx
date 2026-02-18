@@ -1,124 +1,87 @@
 import { CartCountContext } from "@/app/_layout";
 import { Image } from "expo-image";
-import { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-type CartItemPropsType = {
+type CartItemProps = {
   productId: number;
   quantity: number;
-  onQuantityChange?: (newQuantity: number) => void;
+  onQuantityChange?: (q: number) => void;
   onRequestRemove?: () => void;
 };
 
-type Product = {
-  category: string;
-  description: string;
-  id: number;
-  image: string;
-  price: number;
-  rating: { count: number; rate: number };
-  title: string;
-};
+type Product = { image: string; price: number; title: string; description: string };
 
-const CartItem = ({ productId, quantity, onQuantityChange, onRequestRemove }: CartItemPropsType) => {
+const CartItem = ({
+  productId,
+  quantity,
+  onQuantityChange,
+  onRequestRemove,
+}: CartItemProps): React.ReactElement | null => {
   const [product, setProduct] = useState<Product | null>(null);
-  const [qty, setQty] = useState<number>(quantity);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const cartContext = useContext(CartCountContext);
+  const [qty, setQty] = useState(quantity);
+  const { setCartCount, cartCount } = useContext(CartCountContext) ?? {};
 
-  // Sync local state with prop changes
   useEffect(() => {
     setQty(quantity);
   }, [quantity]);
 
   useEffect(() => {
-    setIsLoading(true);
+    let cancelled = false;
     fetch(`https://fakestoreapi.com/products/${productId}`)
-      .then((resp) => resp.json())
-      .then((result) => setProduct(result))
-      .catch((err) => {
-        console.error("Error fetching product:", err);
-      })
-      .finally(() => setIsLoading(false));
+      .then((r) => r.json())
+      .then((data) => !cancelled && setProduct(data))
+      .catch((e) => console.error("CartItem fetch:", e));
+    return () => {
+      cancelled = true;
+    };
   }, [productId]);
 
-  const handleIncrease = () => {
-    if (qty >= 10) return;
-    const next = qty + 1;
+  const updateQty = (delta: number) => {
+    const next = Math.max(1, Math.min(10, qty + delta));
+    if (next === qty) return;
     setQty(next);
     onQuantityChange?.(next);
-    if (!onQuantityChange) cartContext?.setCartCount((cartContext?.cartCount ?? 0) + 1);
+    if (!onQuantityChange && setCartCount)
+      setCartCount((cartCount ?? 0) + (next - qty));
   };
 
-  const handleDecrease = () => {
-    if (qty <= 1) return;
-    const next = qty - 1;
-    setQty(next);
-    onQuantityChange?.(next);
-    if (!onQuantityChange) cartContext?.setCartCount((cartContext?.cartCount ?? 0) - 1);
-  };
-
-  if (isLoading || !product) {
+  if (!product) {
     return (
       <View style={styles.container}>
-        <View style={styles.loadingPlaceholder} />
-        <View style={styles.contentWrapper}>
-          <View style={styles.textContainer}>
-            <View style={styles.loadingText} />
-            <View style={styles.loadingText} />
-          </View>
-        </View>
+        <View style={styles.skeleton} />
+        <View style={[styles.skeleton, styles.skeletonText]} />
       </View>
     );
   }
 
-  const totalPrice = (product.price * qty).toFixed(2);
-
   return (
     <View style={styles.container}>
-      {onRequestRemove && (
-        <TouchableOpacity
-          onPress={onRequestRemove}
-          style={styles.removeBtn}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.removeText}>წაშლა</Text>
-        </TouchableOpacity>
-      )}
       <Image source={product.image} style={styles.image} contentFit="contain" />
-      <View style={styles.contentWrapper}>
-        <View style={styles.textContainer}>
-          <Text numberOfLines={1} style={styles.title}>
-            {product.title}
-          </Text>
-          <Text style={styles.desc} numberOfLines={1}>
-            {product.description}
-          </Text>
-        </View>
-        <View style={styles.priceWrapper}>
-          <View>
-            <Text style={styles.price}>${product.price} each</Text>
-            <Text style={styles.totalPrice}>Total: ${totalPrice}</Text>
+      <View style={styles.content}>
+        <Text numberOfLines={1} style={styles.title}>{product.title}</Text>
+        <Text numberOfLines={1} style={styles.desc}>{product.description}</Text>
+        <View style={styles.bottomRow}>
+          <View style={styles.row}>
+            <View>
+              <Text style={styles.price}>${product.price} each</Text>
+              <Text style={styles.total}>Total: ${(product.price * qty).toFixed(2)}</Text>
+            </View>
+            <View style={styles.stepper}>
+              <TouchableOpacity hitSlop={10} style={styles.btn} onPress={() => updateQty(-1)}>
+                <Text>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.qty}>{qty}</Text>
+              <TouchableOpacity hitSlop={10} style={styles.btn} onPress={() => updateQty(1)}>
+                <Text>+</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.buttonWrapper}>
-            <TouchableOpacity
-              hitSlop={10}
-              activeOpacity={0.4}
-              style={styles.button}
-              onPress={handleDecrease}
-            >
-              <Text>-</Text>
+          {onRequestRemove && (
+            <TouchableOpacity onPress={onRequestRemove} style={styles.removeBtn} activeOpacity={0.7}>
+              <Text style={styles.removeText}>წაშლა</Text>
             </TouchableOpacity>
-            <Text style={styles.qty}>{qty}</Text>
-            <TouchableOpacity
-              hitSlop={10}
-              onPress={handleIncrease}
-              activeOpacity={0.4}
-              style={styles.button}
-            >
-              <Text>+</Text>
-            </TouchableOpacity>
-          </View>
+          )}
         </View>
       </View>
     </View>
@@ -129,94 +92,42 @@ export default CartItem;
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 16,
-    borderBottomColor: "black",
-    borderBottomWidth: 0.8,
-    marginHorizontal: 22,
     flexDirection: "row",
     gap: 24,
     height: 140,
-    justifyContent: "center",
+    paddingVertical: 16,
+    marginHorizontal: 22,
+    borderBottomWidth: 0.8,
+    borderBottomColor: "black",
     position: "relative",
   },
   removeBtn: {
-    position: "absolute",
-    top: 8,
-    right: 8,
+    alignSelf: "flex-end",
+    marginTop: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
     backgroundColor: "#dc2626",
     borderRadius: 6,
   },
-  removeText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  contentWrapper: {
-    justifyContent: "space-between",
-    gap: 24,
-  },
-  image: {
-    width: 80,
-    height: 80,
-    alignSelf: "center",
-  },
-  textContainer: {
-    width: 240,
-    gap: 4,
-  },
-  title: {
-    fontWeight: "600",
-    maxWidth: "80%",
-    fontSize: 17,
-    wordWrap: "wrap",
-  },
-  desc: {
-    fontWeight: "300",
-    maxWidth: "100%",
-    fontSize: 12,
-  },
-  priceWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  buttonWrapper: {
+  removeText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  image: { width: 80, height: 80, alignSelf: "center" },
+  content: { flex: 1, justifyContent: "space-between", gap: 4 },
+  title: { fontWeight: "600", fontSize: 17 },
+  desc: { fontWeight: "300", fontSize: 12 },
+  bottomRow: { gap: 0 },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  price: { fontSize: 16 },
+  total: { fontSize: 14, fontWeight: "600", color: "green", marginTop: 4 },
+  stepper: {
     flexDirection: "row",
     gap: 6,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.1)",
     paddingVertical: 6,
     borderRadius: 16,
   },
-  price: {
-    fontSize: 16,
-    fontWeight: "400",
-  },
-  button: {
-    paddingHorizontal: 12,
-  },
-  qty: {
-    width: 20,
-    textAlign: "center",
-  },
-  totalPrice: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "green",
-    marginTop: 4,
-  },
-  loadingPlaceholder: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 8,
-  },
-  loadingText: {
-    height: 16,
-    backgroundColor: "#e0e0e0",
-    borderRadius: 4,
-    marginBottom: 8,
-    width: "80%",
-  },
+  btn: { paddingHorizontal: 12 },
+  qty: { width: 20, textAlign: "center" },
+  skeleton: { width: 80, height: 80, backgroundColor: "#e0e0e0", borderRadius: 8 },
+  skeletonText: { height: 16, width: "70%", marginTop: 8 },
 });
